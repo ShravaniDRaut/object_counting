@@ -1,0 +1,526 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>VisionCount AI - Real-Time Object Counting System</title>
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- FontAwesome Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <!-- Plotly.js -->
+  <script src="https://cdn.plot.ly/plotly-2.35.2.min.js"></script>
+  <!-- Custom CSS -->
+  <link rel="stylesheet" href="/static/css/styles.css">
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            brand: {
+              50: '#eef2ff',
+              500: '#6366f1',
+              600: '#4f46e5',
+              700: '#4338ca',
+            },
+            dark: {
+              900: '#0b0f17',
+              800: '#111827',
+              700: '#1f2937',
+              600: '#374151'
+            },
+            accent: {
+              cyan: '#00e5ff',
+              green: '#00e676',
+              red: '#ff5252',
+              yellow: '#ffd600',
+              purple: '#d500f9'
+            }
+          }
+        }
+      }
+    }
+  </script>
+</head>
+<body class="bg-dark-900 text-gray-100 min-h-screen flex flex-col font-sans antialiased">
+
+  <!-- Top Navigation Bar -->
+  <header class="border-b border-gray-800 bg-dark-800/80 backdrop-blur sticky top-0 z-50">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+      <!-- Logo & Title -->
+      <div class="flex items-center space-x-3">
+        <div class="h-10 w-10 rounded-xl bg-gradient-to-tr from-cyan-500 to-indigo-600 flex items-center justify-center shadow-lg shadow-cyan-500/20">
+          <i class="fa-solid fa-camera-retro text-white text-lg"></i>
+        </div>
+        <div>
+          <h1 class="text-lg font-bold tracking-tight text-white flex items-center gap-2">
+            VisionCount <span class="text-xs px-2 py-0.5 rounded-full bg-indigo-500/20 text-indigo-400 border border-indigo-500/30">YOLOv8 + ByteTrack</span>
+          </h1>
+          <p class="text-xs text-gray-400">Real-Time Object Detection & Bidirectional Line Counting</p>
+        </div>
+      </div>
+
+      <!-- Live Stream Status Indicators -->
+      <div class="flex items-center space-x-6">
+        <div class="hidden sm:flex items-center space-x-2 bg-dark-900/60 px-3 py-1.5 rounded-lg border border-gray-800 text-xs">
+          <span class="relative flex h-2.5 w-2.5">
+            <span id="status-ping" class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+            <span id="status-dot" class="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500"></span>
+          </span>
+          <span id="status-text" class="text-gray-300 font-medium">Pipeline Ready</span>
+        </div>
+
+        <div class="hidden md:flex items-center space-x-4 text-xs text-gray-400">
+          <div>FPS: <span id="header-fps" class="text-cyan-400 font-semibold font-mono">0.0</span></div>
+          <div>Active Tracks: <span id="header-tracks" class="text-emerald-400 font-semibold font-mono">0</span></div>
+        </div>
+
+        <!-- Documentation & GitHub links -->
+        <div class="flex items-center space-x-2">
+          <a href="/docs" target="_blank" class="text-xs px-3 py-1.5 rounded-lg bg-dark-700 hover:bg-dark-600 text-gray-300 transition flex items-center gap-1.5 border border-gray-700">
+            <i class="fa-solid fa-code"></i> API Docs
+          </a>
+        </div>
+      </div>
+    </div>
+
+    <!-- Navigation Tabs -->
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex space-x-6 border-t border-gray-800/60">
+      <button onclick="switchTab('live')" id="tab-live" class="tab-btn active border-b-2 border-cyan-400 text-cyan-400 py-3 text-sm font-medium flex items-center gap-2 transition">
+        <i class="fa-solid fa-video"></i> Live Detection & Counting
+      </button>
+      <button onclick="switchTab('analytics')" id="tab-analytics" class="tab-btn border-b-2 border-transparent text-gray-400 hover:text-gray-200 py-3 text-sm font-medium flex items-center gap-2 transition">
+        <i class="fa-solid fa-chart-pie"></i> Visual Analytics
+      </button>
+      <button onclick="switchTab('reports')" id="tab-reports" class="tab-btn border-b-2 border-transparent text-gray-400 hover:text-gray-200 py-3 text-sm font-medium flex items-center gap-2 transition">
+        <i class="fa-solid fa-file-csv"></i> Historical Reports & Logs
+      </button>
+      <button onclick="switchTab('settings')" id="tab-settings" class="tab-btn border-b-2 border-transparent text-gray-400 hover:text-gray-200 py-3 text-sm font-medium flex items-center gap-2 transition">
+        <i class="fa-solid fa-sliders"></i> Virtual Line Calibration
+      </button>
+    </div>
+  </header>
+
+  <!-- Main Content Area -->
+  <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 flex-1 w-full">
+
+    <!-- ================= TAB 1: LIVE DETECTION ================= -->
+    <div id="view-live" class="space-y-6">
+      
+      <!-- Top Metrics Summary Cards -->
+      <div class="grid grid-cols-2 sm:grid-cols-4 gap-4">
+        <!-- In Count -->
+        <div class="bg-dark-800 rounded-xl p-4 border border-gray-800 shadow-sm relative overflow-hidden group hover:border-emerald-500/50 transition">
+          <div class="flex items-center justify-between">
+            <span class="text-xs font-semibold uppercase tracking-wider text-emerald-400 flex items-center gap-1.5">
+              <i class="fa-solid fa-arrow-down"></i> Total In
+            </span>
+            <span class="h-8 w-8 rounded-lg bg-emerald-500/10 text-emerald-400 flex items-center justify-center text-sm">
+              <i class="fa-solid fa-person-walking-arrow-right"></i>
+            </span>
+          </div>
+          <div id="stat-total-in" class="mt-2 text-3xl font-extrabold font-mono text-white tracking-tight">0</div>
+          <div class="text-[11px] text-gray-400 mt-1">Crossed downwards / inwards</div>
+        </div>
+
+        <!-- Out Count -->
+        <div class="bg-dark-800 rounded-xl p-4 border border-gray-800 shadow-sm relative overflow-hidden group hover:border-rose-500/50 transition">
+          <div class="flex items-center justify-between">
+            <span class="text-xs font-semibold uppercase tracking-wider text-rose-400 flex items-center gap-1.5">
+              <i class="fa-solid fa-arrow-up"></i> Total Out
+            </span>
+            <span class="h-8 w-8 rounded-lg bg-rose-500/10 text-rose-400 flex items-center justify-center text-sm">
+              <i class="fa-solid fa-person-walking-arrow-loop-left"></i>
+            </span>
+          </div>
+          <div id="stat-total-out" class="mt-2 text-3xl font-extrabold font-mono text-white tracking-tight">0</div>
+          <div class="text-[11px] text-gray-400 mt-1">Crossed upwards / outwards</div>
+        </div>
+
+        <!-- Net / Total Objects -->
+        <div class="bg-dark-800 rounded-xl p-4 border border-gray-800 shadow-sm relative overflow-hidden group hover:border-cyan-500/50 transition">
+          <div class="flex items-center justify-between">
+            <span class="text-xs font-semibold uppercase tracking-wider text-cyan-400 flex items-center gap-1.5">
+              <i class="fa-solid fa-calculator"></i> Total Crossings
+            </span>
+            <span class="h-8 w-8 rounded-lg bg-cyan-500/10 text-cyan-400 flex items-center justify-center text-sm">
+              <i class="fa-solid fa-layer-group"></i>
+            </span>
+          </div>
+          <div id="stat-total-count" class="mt-2 text-3xl font-extrabold font-mono text-white tracking-tight">0</div>
+          <div class="text-[11px] text-gray-400 mt-1">Combined bidirectional traffic</div>
+        </div>
+
+        <!-- Live Pipeline FPS -->
+        <div class="bg-dark-800 rounded-xl p-4 border border-gray-800 shadow-sm relative overflow-hidden group hover:border-yellow-500/50 transition">
+          <div class="flex items-center justify-between">
+            <span class="text-xs font-semibold uppercase tracking-wider text-yellow-400 flex items-center gap-1.5">
+              <i class="fa-solid fa-bolt"></i> Real-Time FPS
+            </span>
+            <span class="h-8 w-8 rounded-lg bg-yellow-500/10 text-yellow-400 flex items-center justify-center text-sm">
+              <i class="fa-solid fa-gauge-high"></i>
+            </span>
+          </div>
+          <div id="stat-fps" class="mt-2 text-3xl font-extrabold font-mono text-yellow-400 tracking-tight">0.0</div>
+          <div class="text-[11px] text-gray-400 mt-1">YOLOv8 + ByteTrack speed</div>
+        </div>
+      </div>
+
+      <!-- Main Live Feed & Control Grid -->
+      <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+
+        <!-- Left 2 Cols: Live Video Stream Frame -->
+        <div class="lg:col-span-2 space-y-4">
+          <div class="bg-dark-800 rounded-2xl border border-gray-800 overflow-hidden shadow-2xl relative">
+            <!-- Video Title Bar -->
+            <div class="px-4 py-3 bg-dark-800/90 border-b border-gray-800 flex items-center justify-between">
+              <div class="flex items-center space-x-2">
+                <span class="h-3 w-3 rounded-full bg-red-500 animate-pulse inline-block"></span>
+                <span class="text-xs font-bold uppercase tracking-wider text-gray-300">Live AI Detection Feed</span>
+                <span id="active-source-badge" class="text-[10px] bg-dark-700 text-cyan-300 px-2 py-0.5 rounded-full border border-gray-700 font-mono">Sample Video</span>
+              </div>
+              <!-- Stream Overlay Toggles -->
+              <div class="flex items-center space-x-3 text-xs">
+                <label class="flex items-center gap-1 cursor-pointer text-gray-300 hover:text-white">
+                  <input type="checkbox" id="toggle-boxes" checked onchange="toggleVisuals()" class="accent-cyan-500 rounded"> Boxes
+                </label>
+                <label class="flex items-center gap-1 cursor-pointer text-gray-300 hover:text-white">
+                  <input type="checkbox" id="toggle-trails" checked onchange="toggleVisuals()" class="accent-cyan-500 rounded"> Trails
+                </label>
+                <label class="flex items-center gap-1 cursor-pointer text-gray-300 hover:text-white">
+                  <input type="checkbox" id="toggle-line" checked onchange="toggleVisuals()" class="accent-cyan-500 rounded"> Line
+                </label>
+                <label class="flex items-center gap-1 cursor-pointer text-gray-300 hover:text-white">
+                  <input type="checkbox" id="toggle-hud" checked onchange="toggleVisuals()" class="accent-cyan-500 rounded"> HUD
+                </label>
+              </div>
+            </div>
+
+            <!-- Video Player Canvas / Feed -->
+            <div class="relative aspect-video bg-black flex items-center justify-center overflow-hidden">
+              <img id="video-stream" src="/api/stream/feed" alt="Real-Time Detection Stream" class="w-full h-full object-contain" onerror="handleStreamError()">
+              <div id="stream-fallback" class="hidden absolute inset-0 flex flex-col items-center justify-center bg-dark-900/90 text-center p-6">
+                <i class="fa-solid fa-video-slash text-4xl text-gray-500 mb-3"></i>
+                <p class="text-gray-300 font-medium">Video Feed Disconnected or Paused</p>
+                <p class="text-xs text-gray-500 mt-1 max-w-sm">Click 'Start Stream' below to resume live detection or switch video sources.</p>
+                <button onclick="startStream()" class="mt-4 px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold rounded-lg shadow-lg">Start Stream</button>
+              </div>
+            </div>
+
+            <!-- Control Bar directly below feed -->
+            <div class="p-4 bg-dark-800/95 border-t border-gray-800 flex flex-wrap items-center justify-between gap-4">
+              <!-- Action Buttons -->
+              <div class="flex items-center space-x-2">
+                <button onclick="startStream()" class="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-xs font-semibold shadow flex items-center gap-2 transition">
+                  <i class="fa-solid fa-play"></i> Start
+                </button>
+                <button onclick="stopStream()" class="px-4 py-2 bg-rose-600 hover:bg-rose-500 text-white rounded-lg text-xs font-semibold shadow flex items-center gap-2 transition">
+                  <i class="fa-solid fa-stop"></i> Stop
+                </button>
+                <button onclick="resetCounters()" class="px-3 py-2 bg-dark-700 hover:bg-dark-600 text-gray-300 rounded-lg text-xs font-medium border border-gray-700 flex items-center gap-1.5 transition">
+                  <i class="fa-solid fa-rotate-left"></i> Reset Counts
+                </button>
+              </div>
+
+              <!-- Confidence Slider -->
+              <div class="flex items-center space-x-3 bg-dark-900/60 px-3 py-1.5 rounded-lg border border-gray-800">
+                <label for="slider-conf" class="text-xs text-gray-400 font-medium">Confidence:</label>
+                <input type="range" id="slider-conf" min="0.10" max="0.90" step="0.05" value="0.35" oninput="updateConfidence(this.value)" class="w-24 accent-cyan-400">
+                <span id="label-conf" class="text-xs font-mono font-bold text-cyan-400">0.35</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Category Breakdown Bar Cards -->
+          <div class="bg-dark-800 rounded-xl p-4 border border-gray-800">
+            <h3 class="text-xs font-bold text-gray-400 uppercase tracking-wider mb-3 flex items-center gap-2">
+              <i class="fa-solid fa-tags text-indigo-400"></i> Category Counts
+            </h3>
+            <div class="grid grid-cols-3 sm:grid-cols-6 gap-3 text-center">
+              <div class="bg-dark-900/80 p-2.5 rounded-lg border border-gray-800/80">
+                <div class="text-gray-400 text-xs flex items-center justify-center gap-1"><i class="fa-solid fa-person text-cyan-400"></i> Person</div>
+                <div id="cat-person" class="text-lg font-bold font-mono text-white mt-1">0</div>
+              </div>
+              <div class="bg-dark-900/80 p-2.5 rounded-lg border border-gray-800/80">
+                <div class="text-gray-400 text-xs flex items-center justify-center gap-1"><i class="fa-solid fa-car text-emerald-400"></i> Car</div>
+                <div id="cat-car" class="text-lg font-bold font-mono text-white mt-1">0</div>
+              </div>
+              <div class="bg-dark-900/80 p-2.5 rounded-lg border border-gray-800/80">
+                <div class="text-gray-400 text-xs flex items-center justify-center gap-1"><i class="fa-solid fa-bus text-orange-400"></i> Bus</div>
+                <div id="cat-bus" class="text-lg font-bold font-mono text-white mt-1">0</div>
+              </div>
+              <div class="bg-dark-900/80 p-2.5 rounded-lg border border-gray-800/80">
+                <div class="text-gray-400 text-xs flex items-center justify-center gap-1"><i class="fa-solid fa-truck text-purple-400"></i> Truck</div>
+                <div id="cat-truck" class="text-lg font-bold font-mono text-white mt-1">0</div>
+              </div>
+              <div class="bg-dark-900/80 p-2.5 rounded-lg border border-gray-800/80">
+                <div class="text-gray-400 text-xs flex items-center justify-center gap-1"><i class="fa-solid fa-motorcycle text-yellow-400"></i> Motor</div>
+                <div id="cat-motorcycle" class="text-lg font-bold font-mono text-white mt-1">0</div>
+              </div>
+              <div class="bg-dark-900/80 p-2.5 rounded-lg border border-gray-800/80">
+                <div class="text-gray-400 text-xs flex items-center justify-center gap-1"><i class="fa-solid fa-bicycle text-pink-400"></i> Bike</div>
+                <div id="cat-bicycle" class="text-lg font-bold font-mono text-white mt-1">0</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Right 1 Col: Video Sources & Live Crossing Event Ticker -->
+        <div class="space-y-6">
+
+          <!-- Source Selection Panel -->
+          <div class="bg-dark-800 rounded-2xl p-5 border border-gray-800 shadow-sm space-y-4">
+            <h3 class="text-xs font-bold text-gray-400 uppercase tracking-wider flex items-center gap-2">
+              <i class="fa-solid fa-sliders text-cyan-400"></i> Input Video Source
+            </h3>
+
+            <!-- Source Type Select -->
+            <div>
+              <label class="block text-xs font-medium text-gray-300 mb-1.5">Source Type</label>
+              <select id="select-source" onchange="onSourceChange()" class="w-full bg-dark-900 border border-gray-700 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-cyan-500">
+                <option value="sample">Sample Traffic Simulation (Looping)</option>
+                <option value="upload">Uploaded Video File</option>
+                <option value="webcam">Live Webcam / CCTV Stream</option>
+              </select>
+            </div>
+
+            <!-- Upload File Input Box (Shown when 'upload' selected) -->
+            <div id="upload-box" class="hidden space-y-3">
+              <label class="block text-xs font-medium text-gray-300">Upload Video (MP4, AVI, MOV)</label>
+              <div class="border-2 border-dashed border-gray-700 hover:border-cyan-500/60 rounded-xl p-4 text-center cursor-pointer transition" onclick="document.getElementById('file-upload-input').click()">
+                <i class="fa-solid fa-cloud-arrow-up text-2xl text-gray-400 mb-1"></i>
+                <p class="text-xs text-gray-300 font-medium">Click to choose video</p>
+                <p class="text-[10px] text-gray-500">MP4, AVI, MOV up to 200MB</p>
+                <input type="file" id="file-upload-input" accept="video/mp4,video/avi,video/quicktime" class="hidden" onchange="uploadSelectedVideo(this)">
+              </div>
+              <div id="upload-progress-bar" class="hidden h-1.5 w-full bg-dark-900 rounded-full overflow-hidden">
+                <div id="upload-progress" class="h-full bg-cyan-400 w-0 transition-all duration-300"></div>
+              </div>
+              <!-- Uploaded videos dropdown -->
+              <div id="video-select-container">
+                <label class="block text-xs font-medium text-gray-300 mb-1">Select Uploaded Video</label>
+                <select id="select-uploaded-video" class="w-full bg-dark-900 border border-gray-700 rounded-lg px-3 py-2 text-xs text-white">
+                  <option value="">Loading videos...</option>
+                </select>
+              </div>
+            </div>
+
+            <!-- Webcam Index Box (Shown when 'webcam' selected) -->
+            <div id="webcam-box" class="hidden space-y-2">
+              <label class="block text-xs font-medium text-gray-300">Camera / Feed Index</label>
+              <input type="number" id="input-webcam-idx" value="0" min="0" max="10" class="w-full bg-dark-900 border border-gray-700 rounded-lg px-3 py-2 text-xs text-white">
+              <p class="text-[10px] text-gray-500">Default webcam is index 0. For USB cameras, try 1 or 2.</p>
+            </div>
+
+            <button onclick="applySourceChange()" class="w-full py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg text-xs font-semibold shadow-md transition flex items-center justify-center gap-2">
+              <i class="fa-solid fa-play"></i> Switch & Run Source
+            </button>
+          </div>
+
+          <!-- Real-Time Crossing Event Ticker -->
+          <div class="bg-dark-800 rounded-2xl p-5 border border-gray-800 shadow-sm flex flex-col h-[320px]">
+            <div class="flex items-center justify-between mb-3">
+              <h3 class="text-xs font-bold text-gray-400 uppercase tracking-wider flex items-center gap-2">
+                <i class="fa-solid fa-wave-square text-emerald-400"></i> Live Crossing Events
+              </h3>
+              <span class="text-[10px] text-gray-500">Real-time ticker</span>
+            </div>
+
+            <div id="events-container" class="space-y-2 overflow-y-auto flex-1 pr-1 text-xs">
+              <div class="text-center text-gray-500 py-8 text-xs">Waiting for objects to cross the virtual line...</div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+    </div>
+
+    <!-- ================= TAB 2: ANALYTICS & INSIGHTS ================= -->
+    <div id="view-analytics" class="hidden space-y-6">
+      <div class="flex items-center justify-between bg-dark-800 p-4 rounded-xl border border-gray-800">
+        <div>
+          <h2 class="text-base font-bold text-white">Traffic & Counting Analytics</h2>
+          <p class="text-xs text-gray-400">Visual breakdown of classified objects, directional flow, and activity timelines.</p>
+        </div>
+        <div class="flex items-center space-x-3">
+          <button onclick="loadAnalyticsData()" class="px-3 py-1.5 bg-dark-700 hover:bg-dark-600 text-gray-200 rounded-lg text-xs font-medium border border-gray-700 flex items-center gap-1.5">
+            <i class="fa-solid fa-rotate"></i> Refresh Charts
+          </button>
+          <button onclick="clearHistory()" class="px-3 py-1.5 bg-rose-600/20 hover:bg-rose-600/30 text-rose-400 rounded-lg text-xs font-medium border border-rose-500/30 flex items-center gap-1.5">
+            <i class="fa-solid fa-trash-can"></i> Clear History
+          </button>
+        </div>
+      </div>
+
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <!-- Donut Chart: Class Distribution -->
+        <div class="bg-dark-800 p-5 rounded-2xl border border-gray-800 shadow-sm">
+          <h3 class="text-xs font-bold text-gray-300 uppercase tracking-wider mb-4 flex items-center gap-2">
+            <i class="fa-solid fa-chart-pie text-cyan-400"></i> Object Category Distribution
+          </h3>
+          <div id="chart-donut" class="h-72 w-full"></div>
+        </div>
+
+        <!-- Bar Chart: IN vs OUT Flow -->
+        <div class="bg-dark-800 p-5 rounded-2xl border border-gray-800 shadow-sm">
+          <h3 class="text-xs font-bold text-gray-300 uppercase tracking-wider mb-4 flex items-center gap-2">
+            <i class="fa-solid fa-chart-bar text-emerald-400"></i> Directional Traffic Flow (IN vs OUT)
+          </h3>
+          <div id="chart-bar" class="h-72 w-full"></div>
+        </div>
+      </div>
+
+      <!-- Time-Series Crossing Frequency -->
+      <div class="bg-dark-800 p-5 rounded-2xl border border-gray-800 shadow-sm">
+        <h3 class="text-xs font-bold text-gray-300 uppercase tracking-wider mb-4 flex items-center gap-2">
+          <i class="fa-solid fa-chart-line text-indigo-400"></i> Crossing Activity Over Time
+        </h3>
+        <div id="chart-timeline" class="h-64 w-full"></div>
+      </div>
+    </div>
+
+    <!-- ================= TAB 3: REPORTS & LOGS ================= -->
+    <div id="view-reports" class="hidden space-y-6">
+      <div class="flex items-center justify-between bg-dark-800 p-4 rounded-xl border border-gray-800">
+        <div>
+          <h2 class="text-base font-bold text-white">Reports & Crossing History Logs</h2>
+          <p class="text-xs text-gray-400">Download audit logs and export counting statistics for external reporting.</p>
+        </div>
+        <div class="flex items-center space-x-3">
+          <a href="/api/reports/export-csv" download class="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-xs font-semibold shadow flex items-center gap-2 transition">
+            <i class="fa-solid fa-download"></i> Export Detailed Events CSV
+          </a>
+          <a href="/api/reports/export-summary-csv" download class="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg text-xs font-semibold shadow flex items-center gap-2 transition">
+            <i class="fa-solid fa-file-csv"></i> Export Category Summary CSV
+          </a>
+        </div>
+      </div>
+
+      <!-- Historical Event Log Table -->
+      <div class="bg-dark-800 rounded-2xl border border-gray-800 overflow-hidden shadow-sm">
+        <div class="px-5 py-4 border-b border-gray-800 flex items-center justify-between">
+          <h3 class="text-xs font-bold text-gray-300 uppercase tracking-wider">Recent Counting Records (SQLite Database)</h3>
+          <button onclick="loadReportsData()" class="text-xs text-cyan-400 hover:underline"><i class="fa-solid fa-rotate mr-1"></i> Refresh Table</button>
+        </div>
+        <div class="overflow-x-auto">
+          <table class="w-full text-left text-xs text-gray-300">
+            <thead class="bg-dark-900/60 text-gray-400 uppercase font-semibold border-b border-gray-800">
+              <tr>
+                <th class="px-4 py-3">Event ID</th>
+                <th class="px-4 py-3">Track ID</th>
+                <th class="px-4 py-3">Object Category</th>
+                <th class="px-4 py-3">Direction</th>
+                <th class="px-4 py-3">Line ID</th>
+                <th class="px-4 py-3">Timestamp (UTC)</th>
+              </tr>
+            </thead>
+            <tbody id="reports-table-body" class="divide-y divide-gray-800">
+              <tr>
+                <td colspan="6" class="px-4 py-8 text-center text-gray-500">Loading historical records...</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- ================= TAB 4: LINE CALIBRATION ================= -->
+    <div id="view-settings" class="hidden space-y-6">
+      <div class="bg-dark-800 p-6 rounded-2xl border border-gray-800 max-w-3xl mx-auto space-y-6">
+        <div>
+          <h2 class="text-base font-bold text-white flex items-center gap-2">
+            <i class="fa-solid fa-sliders text-cyan-400"></i> Virtual Counting Line Configuration
+          </h2>
+          <p class="text-xs text-gray-400 mt-1">Calibrate the 2D coordinates and directional orientation of the virtual counting line.</p>
+        </div>
+
+        <!-- Presets -->
+        <div>
+          <label class="block text-xs font-semibold text-gray-300 mb-2 uppercase tracking-wider">Quick Presets</label>
+          <div class="grid grid-cols-2 sm:grid-cols-4 gap-2">
+            <button onclick="applyLinePreset(0.1, 0.5, 0.9, 0.5)" class="p-2.5 bg-dark-900 hover:bg-dark-700 rounded-lg text-xs font-medium text-gray-300 border border-gray-800 transition text-center">
+              Horizontal Center
+            </button>
+            <button onclick="applyLinePreset(0.5, 0.1, 0.5, 0.9)" class="p-2.5 bg-dark-900 hover:bg-dark-700 rounded-lg text-xs font-medium text-gray-300 border border-gray-800 transition text-center">
+              Vertical Center
+            </button>
+            <button onclick="applyLinePreset(0.1, 0.7, 0.9, 0.7)" class="p-2.5 bg-dark-900 hover:bg-dark-700 rounded-lg text-xs font-medium text-gray-300 border border-gray-800 transition text-center">
+              Lower Roadway (70%)
+            </button>
+            <button onclick="applyLinePreset(0.1, 0.85, 0.9, 0.25)" class="p-2.5 bg-dark-900 hover:bg-dark-700 rounded-lg text-xs font-medium text-gray-300 border border-gray-800 transition text-center">
+              Diagonal Angle
+            </button>
+          </div>
+        </div>
+
+        <!-- Coordinate Sliders (Normalized 0.0 - 1.0) -->
+        <div class="space-y-4 pt-2">
+          <div>
+            <div class="flex justify-between text-xs font-medium text-gray-300 mb-1">
+              <span>Start Point X:</span>
+              <span id="val-start-x" class="font-mono text-cyan-400">0.10</span>
+            </div>
+            <input type="range" id="input-start-x" min="0.0" max="1.0" step="0.02" value="0.10" oninput="updateLineCoordsUI()" class="w-full accent-cyan-400">
+          </div>
+
+          <div>
+            <div class="flex justify-between text-xs font-medium text-gray-300 mb-1">
+              <span>Start Point Y:</span>
+              <span id="val-start-y" class="font-mono text-cyan-400">0.50</span>
+            </div>
+            <input type="range" id="input-start-y" min="0.0" max="1.0" step="0.02" value="0.50" oninput="updateLineCoordsUI()" class="w-full accent-cyan-400">
+          </div>
+
+          <div>
+            <div class="flex justify-between text-xs font-medium text-gray-300 mb-1">
+              <span>End Point X:</span>
+              <span id="val-end-x" class="font-mono text-cyan-400">0.90</span>
+            </div>
+            <input type="range" id="input-end-x" min="0.0" max="1.0" step="0.02" value="0.90" oninput="updateLineCoordsUI()" class="w-full accent-cyan-400">
+          </div>
+
+          <div>
+            <div class="flex justify-between text-xs font-medium text-gray-300 mb-1">
+              <span>End Point Y:</span>
+              <span id="val-end-y" class="font-mono text-cyan-400">0.50</span>
+            </div>
+            <input type="range" id="input-end-y" min="0.0" max="1.0" step="0.02" value="0.50" oninput="updateLineCoordsUI()" class="w-full accent-cyan-400">
+          </div>
+
+          <!-- Direction Mode -->
+          <div class="pt-2">
+            <label class="block text-xs font-medium text-gray-300 mb-1.5">Counting Direction Mode</label>
+            <select id="input-direction-mode" class="w-full bg-dark-900 border border-gray-700 rounded-lg px-3 py-2 text-xs text-white">
+              <option value="bidirectional">Bidirectional (Count both IN and OUT)</option>
+              <option value="in_only">IN Only (Downwards / Entry)</option>
+              <option value="out_only">OUT Only (Upwards / Exit)</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="pt-4 flex justify-end">
+          <button onclick="saveLineConfiguration()" class="px-6 py-2.5 bg-cyan-500 hover:bg-cyan-400 text-dark-900 font-bold rounded-lg text-xs shadow-lg transition flex items-center gap-2">
+            <i class="fa-solid fa-check"></i> Apply Line Coordinates
+          </button>
+        </div>
+      </div>
+    </div>
+
+  </main>
+
+  <!-- Footer -->
+  <footer class="border-t border-gray-800/80 bg-dark-900/60 py-4 mt-auto">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col sm:flex-row items-center justify-between text-xs text-gray-500">
+      <p>© 2026 AI Real-Time Object Counting System. Built with YOLOv8, ByteTrack, OpenCV & FastAPI.</p>
+      <div class="flex items-center space-x-4 mt-2 sm:mt-0">
+        <span>FastAPI + SQLite + Plotly</span>
+      </div>
+    </div>
+  </footer>
+
+  <!-- Application JavaScript -->
+  <script src="/static/js/dashboard.js"></script>
+  <script src="/static/js/app.js"></script>
+</body>
+</html>
