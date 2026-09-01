@@ -1,53 +1,43 @@
 """
-Tests for SQLAlchemy database schema, relationships, and CRUD logic.
+Tests for DatabaseManager, SQLAlchemy schema, and SQLite CRUD.
 """
 import pytest
-from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker
-
-from backend.database.models import Base, Video, Detection, ObjectCount
-from backend.database import crud
+from src.database import DatabaseManager, Base
 
 TEST_DB_URL = "sqlite:///:memory:"
 
+
 @pytest.fixture
-def db_session():
-    engine = create_engine(TEST_DB_URL, connect_args={"check_same_thread": False})
-    Base.metadata.create_all(bind=engine)
-    TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
-    session = TestingSessionLocal()
-    yield session
-    session.close()
-    Base.metadata.drop_all(bind=engine)
+def test_db():
+    manager = DatabaseManager(db_url=TEST_DB_URL)
+    yield manager
 
 
-def test_create_and_query_video(db_session):
-    video = crud.create_video(
-        db=db_session,
-        filename="test_video.mp4",
-        filepath="/tmp/test_video.mp4",
-        source_type="upload",
-        duration=12.5,
+def test_create_and_query_video(test_db):
+    video = test_db.create_video_record(
+        source="traffic.mp4",
+        source_type="video",
+        duration=15.0,
         width=1280,
         height=720,
-        fps=30.0
+        fps=30.0,
+        total_frames=450
     )
     assert video.id is not None
-    assert video.filename == "test_video.mp4"
-
-    fetched = crud.get_video_by_id(db_session, video.id)
-    assert fetched is not None
-    assert fetched.fps == 30.0
+    assert video.source == "traffic.mp4"
+    assert video.fps == 30.0
 
 
-def test_record_counts_and_summary(db_session):
-    # Record crossings
-    crud.record_count(db=db_session, track_id=1, class_name="car", direction="IN")
-    crud.record_count(db=db_session, track_id=2, class_name="car", direction="OUT")
-    crud.record_count(db=db_session, track_id=3, class_name="person", direction="IN")
-    crud.record_count(db=db_session, track_id=4, class_name="bus", direction="IN")
+def test_log_crossing_and_summary(test_db):
+    test_db.log_crossing(track_id=1, class_name="car", direction="IN")
+    test_db.log_crossing(track_id=2, class_name="car", direction="OUT")
+    test_db.log_crossing(track_id=3, class_name="person", direction="IN")
+    test_db.log_crossing(track_id=4, class_name="bus", direction="IN")
 
-    summary = crud.get_counts_summary(db=db_session)
+    crossings = test_db.get_all_crossings()
+    assert len(crossings) == 4
+
+    summary = test_db.get_summary_stats()
     assert summary["total_in"] == 3
     assert summary["total_out"] == 1
     assert summary["total_count"] == 4

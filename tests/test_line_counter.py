@@ -2,7 +2,7 @@
 Unit tests for the LineCrossingCounter geometry and logic.
 """
 import pytest
-from backend.ml.line_counter import LineCrossingCounter
+from src.line_counter import LineCrossingCounter
 
 
 def test_line_counter_crossing_in():

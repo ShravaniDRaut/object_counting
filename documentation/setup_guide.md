@@ -1,13 +1,13 @@
 # Setup & Installation Guide
 
 ## 1. Prerequisites
-- Python 3.10+ (Recommended: Python 3.11 or 3.12)
+- Python 3.10+ (Python 3.11 or 3.12 recommended)
 - Git
 - (Optional) NVIDIA GPU with CUDA 11.8+ or 12.1+ for accelerated inference.
 
 ---
 
-## 2. Quickstart (Local Environment)
+## 2. Installation Steps
 
 ### Step 1: Clone Repository
 ```bash
@@ -15,7 +15,7 @@ git clone https://github.com/your-username/object-counting-system.git
 cd object-counting-system
 ```
 
-### Step 2: Create and Activate Virtual Environment
+### Step 2: Create & Activate Virtual Environment
 On Windows (PowerShell):
 ```powershell
 python -m venv venv
@@ -34,36 +34,29 @@ pip install --upgrade pip
 pip install -r requirements.txt
 ```
 
-### Step 4: Run the Application
+---
+
+## 3. Running the System
+
+### Run with Default Sample Video
 ```bash
-python -m uvicorn backend.main:app --host 0.0.0.0 --port 8000 --reload
+python main.py
 ```
 
-Open your browser and navigate to:
+### Run with Live Webcam
+```bash
+python main.py --source 0
 ```
-http://localhost:8000
+
+### Run with Custom Video File
+```bash
+python main.py --source "path/to/traffic_cctv.mp4"
 ```
 
 ---
 
-## 3. Docker Deployment
+## 4. Running Automated Tests
 
-To launch the system using Docker and Docker Compose:
-```bash
-docker-compose up --build -d
-```
-Access the application at `http://localhost:8000`.
-
-To stop the container:
-```bash
-docker-compose down
-```
-
----
-
-## 4. Testing
-
-Run the test suite using pytest:
 ```bash
 pytest tests/ -v
 ```
