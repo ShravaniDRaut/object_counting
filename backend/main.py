@@ -71,13 +71,11 @@ STATIC_DIR.mkdir(parents=True, exist_ok=True)
 TEMPLATES_DIR.mkdir(parents=True, exist_ok=True)
 app.mount("/static", StaticFiles(directory=str(STATIC_DIR)), name="static")
 
-templates = Jinja2Templates(directory=str(TEMPLATES_DIR))
-
-
 @app.get("/", response_class=HTMLResponse)
-async def serve_index(request: Request):
+async def serve_index():
     """Serve modern single-page dashboard."""
-    return templates.TemplateResponse("index.html", {"request": request, "app_name": settings.APP_NAME})
+    index_file = TEMPLATES_DIR / "index.html"
+    return HTMLResponse(content=index_file.read_text(encoding="utf-8"))
 
 
 @app.get("/api/health")
