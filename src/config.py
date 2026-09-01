@@ -48,7 +48,6 @@ class Config:
 
     # Storage Paths
     DATABASE_URL = os.getenv("DATABASE_URL", f"sqlite:///{BASE_DIR / 'data' / 'object_counting.db'}")
-    EXPORT_DIR = BASE_DIR / os.getenv("EXPORT_DIR", "data/exports")
     SAMPLE_DIR = BASE_DIR / os.getenv("SAMPLE_DIR", "data/samples")
     OUTPUT_DIR = BASE_DIR / os.getenv("OUTPUT_DIR", "data/outputs")
     MODELS_DIR = BASE_DIR / "models"
@@ -57,5 +56,5 @@ class Config:
 cfg = Config()
 
 # Create directories
-for p in [cfg.EXPORT_DIR, cfg.SAMPLE_DIR, cfg.OUTPUT_DIR, cfg.MODELS_DIR]:
+for p in [cfg.SAMPLE_DIR, cfg.OUTPUT_DIR, cfg.MODELS_DIR]:
     p.mkdir(parents=True, exist_ok=True)

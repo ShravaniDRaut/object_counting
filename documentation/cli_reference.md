@@ -29,8 +29,6 @@ python main.py [OPTIONS]
 | `Q` / `ESC` | Exit application and finalize session |
 | `P` / `SPACE` | Pause / Resume playback |
 | `R` | Reset count registers to 0 |
-| `E` | Export CSV reports immediately to `data/exports/` |
-| `A` | Generate and open Plotly interactive analytics dashboard in browser |
 | `H` | Toggle on-screen HUD banner |
 | `T` | Toggle tracking trails |
 | `S` | Save snapshot screenshot to `data/outputs/` |

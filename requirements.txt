@@ -4,10 +4,8 @@ opencv-python>=4.10.0
 numpy>=1.26.0
 lap>=0.5.12
 
-# Database & Data Analytics
+# Database Persistence
 SQLAlchemy>=2.0.35
-pandas>=2.2.0
-plotly>=5.24.0
 
 # Utilities & Testing
 python-dotenv>=1.0.1

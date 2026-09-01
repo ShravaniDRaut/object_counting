@@ -15,8 +15,6 @@ from src.database import db
 from src.tracker import ByteTrackerManager
 from src.line_counter import LineCrossingCounter
 from src.annotator import FrameAnnotator
-from src.exporter import export_events_csv, export_summary_csv
-from src.analytics import generate_analytics_dashboard
 
 
 def parse_args():
@@ -172,7 +170,7 @@ def main():
     prev_time = time.time()
     is_paused = False
 
-    logger.info("Inference loop running. Press [Q] to quit, [P] to pause, [E] to export CSV, [A] for Plotly analytics.")
+    logger.info("Inference loop running. Press [Q] to quit, [P] to pause, [R] to reset, [S] to snapshot.")
 
     try:
         while True:
@@ -265,13 +263,6 @@ def main():
             elif key == ord("r"):  # 'r'
                 counter.reset_counts()
                 logger.info("Counters reset to 0.")
-            elif key == ord("e"):  # 'e'
-                events_csv = export_events_csv(video_id=video_id)
-                summary_csv = export_summary_csv(video_id=video_id)
-                logger.info(f"Exported CSVs: {events_csv.name}, {summary_csv.name}")
-            elif key == ord("a"):  # 'a'
-                html_path = generate_analytics_dashboard(video_id=video_id, open_in_browser=True)
-                logger.info(f"Opened Plotly Analytics Dashboard: {html_path}")
             elif key == ord("h"):  # 'h'
                 annotator.show_hud = not annotator.show_hud
             elif key == ord("t"):  # 't'
@@ -301,18 +292,11 @@ def main():
             class_counts_json=json.dumps(counter.class_counts)
         )
 
-        # Generate Final CSV Reports & Plotly Dashboard
-        csv1 = export_events_csv(video_id=video_id)
-        csv2 = export_summary_csv(video_id=video_id)
-        dashboard_html = generate_analytics_dashboard(video_id=video_id, open_in_browser=False)
-
         logger.info("=" * 60)
         logger.info("Session Completed Successfully!")
         logger.info(f"Total Crossings: {counter.total_in + counter.total_out} (IN: {counter.total_in} | OUT: {counter.total_out})")
         logger.info(f"Category Breakdown: {counter.class_counts}")
-        logger.info(f"Event Audit Log CSV: {csv1}")
-        logger.info(f"Summary Table CSV: {csv2}")
-        logger.info(f"Plotly Analytics Dashboard: {dashboard_html}")
+        logger.info(f"Database Record ID: {video_id}")
         logger.info("=" * 60)
 
 

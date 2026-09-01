@@ -130,5 +130,5 @@ class FrameAnnotator:
         bot_h = 32
         cv2.rectangle(overlay, (0, h - bot_h), (w, h), (15, 18, 25), -1)
         cv2.addWeighted(overlay, 0.85, img, 0.15, 0, img)
-        controls_text = "[Q] Quit | [P] Pause | [R] Reset | [E] Export CSV | [A] Plotly Analytics | [H] HUD | [T] Trails"
+        controls_text = "[Q] Quit | [P] Pause/Resume | [R] Reset Counts | [H] Toggle HUD | [T] Toggle Trails | [S] Snapshot"
         cv2.putText(img, controls_text, (15, h - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.42, (0, 220, 255), 1, cv2.LINE_AA)

@@ -5,15 +5,14 @@
 [![OpenCV](https://img.shields.io/badge/OpenCV-4.10+-red.svg)](https://opencv.org/)
 [![ByteTrack](https://img.shields.io/badge/Tracker-ByteTrack-green.svg)](https://github.com/ifzhang/ByteTrack)
 [![SQLite](https://img.shields.io/badge/Database-SQLite%20%2F%20SQLAlchemy-lightgrey.svg)](https://sqlite.org/)
-[![Plotly](https://img.shields.io/badge/Analytics-Plotly%20%26%20Pandas-blueviolet.svg)](https://plotly.com/)
 
-A high-performance standalone Computer Vision application that detects, tracks, and counts objects in real-time from webcam streams or video files (MP4, AVI, MOV). Powered by **YOLOv8**, **ByteTrack**, and a precision 2D vector-geometry line-crossing engine, the system logs bidirectional traffic (**IN** / **OUT**) into an **SQLite** database, exports detailed **CSV audit reports**, and generates rich interactive visual analytics dashboards with **Plotly**.
+A high-performance standalone Computer Vision application that detects, tracks, and counts objects in real-time from webcam streams or video files (MP4, AVI, MOV). Powered by **YOLOv8**, **ByteTrack**, and a precision 2D vector-geometry line-crossing engine, the system logs bidirectional traffic (**IN** / **OUT**) directly into an **SQLite** database.
 
 ---
 
 ## 🌟 Core Features
 
-- 📹 **Multi-Source Input**: Real-time processing for uploaded videos (MP4, AVI, MOV) or live webcam feeds (`--source 0`).
+- 📹 **Multi-Source Input**: Real-time processing for video files (MP4, AVI, MOV) or live webcam feeds (`--source 0`).
 - ⚡ **YOLOv8 Object Detection**: High-accuracy real-time detection with automatic CPU/GPU (CUDA/MPS) acceleration.
 - 🏷️ **6 Targeted Object Categories**:
   - 🚶 **Person** (Pedestrians)
@@ -29,9 +28,7 @@ A high-performance standalone Computer Vision application that detects, tracks, 
   - Dynamic virtual counting line (pulses red on crossing)
   - Top & bottom on-screen Heads-Up Display (HUD) with FPS and live counts
   - Interactive keyboard shortcuts during playback
-- 📥 **CSV Reporting**: Generates detailed event logs (`crossing_events_*.csv`) and category summary reports (`counting_summary_*.csv`).
-- 📊 **Plotly Analytics Dashboard**: Standalone interactive HTML report with Category Donut chart, Directional IN vs OUT bar chart, and time-series traffic density.
-- 🗄️ **Relational Database**: Four SQLite/SQLAlchemy tables (`videos`, `detections`, `object_counts`, `analytics`).
+- 🗄️ **Relational Database Persistence**: Stores video metadata and line-crossing events into SQLite with SQLAlchemy.
 
 ---
 
@@ -44,8 +41,6 @@ While the OpenCV video window is active:
 | `Q` / `ESC` | **Quit** application and save session summary |
 | `P` / `SPACE` | **Pause / Resume** video playback |
 | `R` | **Reset** live counters to zero |
-| `E` | **Export CSV** reports immediately to `data/exports/` |
-| `A` | **Generate & Open Plotly Analytics** dashboard in browser |
 | `H` | **Toggle HUD** on-screen banner visibility |
 | `T` | **Toggle Trails** motion history lines |
 | `S` | **Save Snapshot** screenshot to `data/outputs/` |
@@ -72,10 +67,10 @@ While the OpenCV video window is active:
          ┌───────────┴───────────┐
          ▼                       ▼
  [ SQLite Database ]    [ OpenCV Frame Annotator ]
-(Detections & Counts)   (BBoxes, Line, Trails, HUD)
-         │                       │
-         ▼                       ▼
-[ CSV & Plotly Reports ]  [ High-Performance GUI ]
+(Videos, Detections,    (BBoxes, Line, Trails, HUD)
+  Object Counts)                 │
+                                 ▼
+                      [ High-Performance GUI ]
 ```
 
 ### Vector Line-Crossing Formula
@@ -91,29 +86,26 @@ $$\text{sign}(\text{ccw}(P_1, P_2, C_{t-1})) \neq \text{sign}(\text{ccw}(P_1, P_
 ```
 object_counting/
 ├── src/
-│   ├── annotator.py      # OpenCV visual rendering (BBoxes, trails, line, HUD)
-│   ├── analytics.py      # Standalone interactive Plotly HTML dashboard generator
+│   ├── annotator.py      # OpenCV visual rendering (BBoxes, labels, trails, line, HUD)
 │   ├── config.py         # Application configuration and .env loading
-│   ├── database.py       # SQLite models (videos, detections, object_counts, analytics)
+│   ├── database.py       # SQLite database persistence (videos, detections, counts)
 │   ├── detector.py       # YOLOv8 object detector wrapper
-│   ├── exporter.py       # CSV report exporter
 │   ├── line_counter.py   # 2D vector geometry line crossing engine
 │   ├── logger.py         # Centralized structured logger
 │   └── tracker.py        # ByteTrack tracking manager
 ├── data/
-│   ├── exports/          # Generated CSV reports and Plotly HTML dashboards
 │   ├── outputs/          # Saved video snapshots and recordings
 │   └── samples/          # Test videos (e.g. sample_traffic.mp4)
 ├── models/
 │   └── yolov8n.pt        # YOLOv8 neural network weights
 ├── tests/
-│   ├── test_analytics.py # Plotly dashboard tests
-│   ├── test_database.py  # SQLite schema & CRUD tests
-│   ├── test_exporter.py  # CSV exporter tests
-│   └── test_line_counter.py # Geometry & double-counting prevention tests
+│   ├── test_database.py  # SQLite schema & persistence tests
+│   └── test_line_counter.py # Vector cross-product & cooldown tests
 ├── documentation/
-│   └── architecture.md   # System architecture specification
-├── requirements.txt      # Python dependencies
+│   ├── architecture.md   # System architecture specification
+│   ├── cli_reference.md  # CLI command line options
+│   └── setup_guide.md    # Environment setup instructions
+├── requirements.txt      # Minimal Python dependencies
 ├── .env.example / .env   # Configuration settings
 ├── main.py               # Main CLI application runner
 └── README.md             # Project documentation
@@ -159,7 +151,7 @@ python main.py --source path/to/video.mp4 --no-display
 
 ## 🧪 Testing
 
-Run all automated unit and integration tests:
+Run automated unit and integration tests:
 ```bash
 pytest tests/ -v
 ```
