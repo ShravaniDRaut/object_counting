@@ -2,10 +2,19 @@
 AI-Powered Real-Time Object Counting System - Main CLI Entrypoint.
 Executes YOLOv8 object detection, ByteTrack tracking, and virtual line counting.
 """
-import argparse
 import sys
-import time
+import os
+import subprocess
 from pathlib import Path
+
+# Automatically hand off to project virtual environment if available
+_venv_py = Path(__file__).resolve().parent / "venv" / "Scripts" / "python.exe"
+if _venv_py.exists() and Path(sys.executable).resolve() != _venv_py.resolve():
+    os.environ["VIRTUAL_ENV"] = str(_venv_py.parent.parent)
+    sys.exit(subprocess.call([str(_venv_py)] + sys.argv))
+
+import argparse
+import time
 import cv2
 import numpy as np
 
