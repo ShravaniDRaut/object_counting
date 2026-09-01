@@ -232,14 +232,23 @@ def main():
                             f"{event['class_name'].capitalize()} | {event['direction']} | Frame: {frame_idx}"
                         )
 
+                # In-frame object type breakdown
+                in_frame_classes = {}
+                for obj in tracked_objects:
+                    cname = obj["class_name"]
+                    in_frame_classes[cname] = in_frame_classes.get(cname, 0) + 1
+
                 # 3. Frame Annotation
                 stats = {
                     "fps": fps,
                     "frame_idx": frame_idx,
+                    "in_frame_count": len(tracked_objects),
+                    "in_frame_classes": in_frame_classes,
+                    "total_unique_detected": counter.total_unique_detected,
+                    "cumulative_class_counts": counter.cumulative_class_counts,
                     "total_in": counter.total_in,
                     "total_out": counter.total_out,
-                    "total_count": counter.total_in + counter.total_out,
-                    "active_tracks": len(tracked_objects),
+                    "total_crossed": counter.total_in + counter.total_out,
                     "class_counts": counter.class_counts
                 }
 
@@ -303,8 +312,10 @@ def main():
 
         logger.info("=" * 60)
         logger.info("Session Completed Successfully!")
-        logger.info(f"Total Crossings: {counter.total_in + counter.total_out} (IN: {counter.total_in} | OUT: {counter.total_out})")
-        logger.info(f"Category Breakdown: {counter.class_counts}")
+        logger.info(f"Total Unique Objects Detected: {counter.total_unique_detected}")
+        logger.info(f"Unique Objects by Category: {counter.cumulative_class_counts}")
+        logger.info(f"Total Line Crossings: {counter.total_in + counter.total_out} (IN: {counter.total_in} | OUT: {counter.total_out})")
+        logger.info(f"Crossings by Category: {counter.class_counts}")
         logger.info(f"Database Record ID: {video_id}")
         logger.info("=" * 60)
 

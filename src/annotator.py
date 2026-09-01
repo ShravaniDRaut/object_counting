@@ -97,38 +97,62 @@ class FrameAnnotator:
         return img
 
     def _draw_hud(self, img: np.ndarray, stats: Dict[str, Any]):
-        """Renders header banner and footer controls HUD."""
+        """Renders responsive header banner and footer controls HUD."""
         h, w = img.shape[:2]
 
-        # Top Header Banner
-        top_h = 70
-        overlay = img.copy()
-        cv2.rectangle(overlay, (0, 0), (w, top_h), (20, 24, 33), -1)
-        cv2.addWeighted(overlay, 0.8, img, 0.2, 0, img)
-        cv2.line(img, (0, top_h), (w, top_h), (0, 200, 255), 2)
+        # Dynamic scale based on width
+        scale = max(0.35, min(0.6, (w / 1280.0) * 0.6))
+        small_scale = max(0.3, scale * 0.82)
+        thickness = 1 if w < 640 else 2
 
-        # Stats metrics
+        # Extract stats
         fps = stats.get("fps", 0.0)
+        in_frame_count = stats.get("in_frame_count", 0)
+        total_unique = stats.get("total_unique_detected", 0)
         total_in = stats.get("total_in", 0)
         total_out = stats.get("total_out", 0)
-        total_count = stats.get("total_count", 0)
-        active_tracks = stats.get("active_tracks", 0)
+        total_crossed = stats.get("total_crossed", total_in + total_out)
+        in_frame_classes = stats.get("in_frame_classes", {})
+        cumulative_classes = stats.get("cumulative_class_counts", {})
 
-        cv2.putText(img, f"FPS: {fps:.1f}", (15, 26), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 255, 200), 2, cv2.LINE_AA)
-        cv2.putText(img, f"IN: {total_in}", (150, 26), cv2.FONT_HERSHEY_SIMPLEX, 0.65, (0, 255, 0), 2, cv2.LINE_AA)
-        cv2.putText(img, f"OUT: {total_out}", (260, 26), cv2.FONT_HERSHEY_SIMPLEX, 0.65, (0, 80, 255), 2, cv2.LINE_AA)
-        cv2.putText(img, f"TOTAL: {total_count}", (380, 26), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 255, 255), 2, cv2.LINE_AA)
-        cv2.putText(img, f"Tracks: {active_tracks}", (530, 26), cv2.FONT_HERSHEY_SIMPLEX, 0.55, (200, 200, 255), 1, cv2.LINE_AA)
+        # Top Header Banner
+        top_h = max(68, int(h * 0.16))
+        overlay = img.copy()
+        cv2.rectangle(overlay, (0, 0), (w, top_h), (18, 22, 30), -1)
+        cv2.addWeighted(overlay, 0.85, img, 0.15, 0, img)
+        cv2.line(img, (0, top_h), (w, top_h), (0, 215, 255), 2)
 
-        # Class Breakdown line
-        class_counts = stats.get("class_counts", {})
-        cats = [f"{k.capitalize()}: {v['TOTAL']}" for k, v in class_counts.items() if v['TOTAL'] > 0]
-        cat_str = " | ".join(cats) if cats else "Target Categories: Person, Car, Bus, Truck, Motorcycle, Bicycle"
-        cv2.putText(img, cat_str, (15, 55), cv2.FONT_HERSHEY_SIMPLEX, 0.45, (180, 190, 200), 1, cv2.LINE_AA)
+        # Line 1: Primary Metrics (FPS, In-Frame Objects, Total Objects Seen, Line Crossings)
+        y1 = int(top_h * 0.38)
+        line1_text = (
+            f"FPS: {fps:.1f}  |  "
+            f"IN FRAME: {in_frame_count}  |  "
+            f"TOTAL DETECTED: {total_unique}  |  "
+            f"CROSSED: {total_crossed} (IN:{total_in} OUT:{total_out})"
+        )
+        cv2.putText(img, line1_text, (10, y1), cv2.FONT_HERSHEY_SIMPLEX, scale, (0, 255, 255), thickness, cv2.LINE_AA)
+
+        # Line 2: In-Frame Object Type Breakdown
+        y2 = int(top_h * 0.65)
+        if in_frame_classes:
+            frame_cats = [f"{k.capitalize()}: {v}" for k, v in sorted(in_frame_classes.items())]
+            frame_str = "In-Frame Types: " + " | ".join(frame_cats)
+        else:
+            frame_str = "In-Frame Types: None"
+        cv2.putText(img, frame_str, (10, y2), cv2.FONT_HERSHEY_SIMPLEX, small_scale, (100, 255, 100), 1, cv2.LINE_AA)
+
+        # Line 3: Cumulative Unique Objects by Category
+        y3 = int(top_h * 0.90)
+        if cumulative_classes:
+            cum_cats = [f"{k.capitalize()}: {v}" for k, v in sorted(cumulative_classes.items())]
+            cum_str = "Cumulative Unique: " + " | ".join(cum_cats)
+        else:
+            cum_str = "Target Categories: Person, Car, Bus, Truck, Motorcycle, Bicycle"
+        cv2.putText(img, cum_str, (10, y3), cv2.FONT_HERSHEY_SIMPLEX, small_scale, (200, 200, 210), 1, cv2.LINE_AA)
 
         # Bottom Controls Banner
-        bot_h = 32
+        bot_h = max(26, int(h * 0.05))
         cv2.rectangle(overlay, (0, h - bot_h), (w, h), (15, 18, 25), -1)
         cv2.addWeighted(overlay, 0.85, img, 0.15, 0, img)
-        controls_text = "[Q] Quit | [P] Pause/Resume | [R] Reset Counts | [H] Toggle HUD | [T] Toggle Trails | [S] Snapshot"
-        cv2.putText(img, controls_text, (15, h - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.42, (0, 220, 255), 1, cv2.LINE_AA)
+        controls_text = "[Q] Quit | [P] Pause | [R] Reset | [H] HUD | [T] Trails | [S] Snapshot"
+        cv2.putText(img, controls_text, (10, h - int(bot_h * 0.28)), cv2.FONT_HERSHEY_SIMPLEX, small_scale, (0, 220, 255), 1, cv2.LINE_AA)

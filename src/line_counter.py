@@ -30,7 +30,9 @@ class LineCrossingCounter:
         self.track_last_counted: Dict[int, int] = {}
         self.counted_ids: Set[int] = set()
 
-        # Cumulative counters
+        # Cumulative counters & unique object registry
+        self.all_seen_track_ids: Set[int] = set()
+        self.unique_class_tracks: Dict[str, Set[int]] = {}
         self.total_in = 0
         self.total_out = 0
         self.class_counts: Dict[str, Dict[str, int]] = {}
@@ -44,10 +46,22 @@ class LineCrossingCounter:
         self.track_histories.clear()
         self.track_last_counted.clear()
         self.counted_ids.clear()
+        self.all_seen_track_ids.clear()
+        self.unique_class_tracks.clear()
         self.total_in = 0
         self.total_out = 0
         self.class_counts.clear()
         self.recent_events.clear()
+
+    @property
+    def total_unique_detected(self) -> int:
+        """Total unique objects detected and tracked so far across the video."""
+        return len(self.all_seen_track_ids)
+
+    @property
+    def cumulative_class_counts(self) -> Dict[str, int]:
+        """Total unique objects detected per class across the video."""
+        return {cls: len(tids) for cls, tids in self.unique_class_tracks.items()}
 
     @staticmethod
     def _ccw(A: np.ndarray, B: np.ndarray, C: np.ndarray) -> float:
@@ -82,6 +96,12 @@ class LineCrossingCounter:
     ) -> Optional[dict]:
         """Processes an object position and returns an event dict if line is crossed."""
         curr_pt = np.array(centroid, dtype=np.float32)
+
+        # Register unique track
+        self.all_seen_track_ids.add(track_id)
+        if class_name not in self.unique_class_tracks:
+            self.unique_class_tracks[class_name] = set()
+        self.unique_class_tracks[class_name].add(track_id)
 
         if track_id not in self.track_histories:
             self.track_histories[track_id] = [centroid]
