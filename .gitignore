@@ -43,6 +43,11 @@ data/samples/*
 *.sqlite
 *.sqlite3
 
+# Outputs & PDFs
+*.pdf
+data/outputs/*
+!data/outputs/.gitkeep
+
 # Logs & OS
 *.log
 .DS_Store
